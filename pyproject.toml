@@ -9,6 +9,7 @@ python = "^3.8"
 replit = "^3.2.4"
 discord = "^1.7.3"
 emojis = "^0.6.0"
+notion-client = "^0.6.0"
 
 [tool.poetry.dev-dependencies]
 
