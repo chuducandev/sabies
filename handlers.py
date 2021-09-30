@@ -14,6 +14,7 @@ from random import seed
 from random import randint
 from random import shuffle
 from replit import db
+from keywords import commands
 
 # seed(10)
 
@@ -21,27 +22,66 @@ notionToken = os.environ['NOTION_TOKEN']
 
 notion = Client(auth = notionToken)
 
-hello = ['Hi there!', 'Hello!', 'Have a good day!', 'Tada!']
+hello = [
+    'Xin chào nhaaaa!! 😘', 
+    'Chào nhé! 😎', 
+    'Chúc bạn ngày mới tốt lành! 😊', 
+    'Hú hà! 🤪'
+]
+
+textChannelWarnings = [
+    'Ai ún cô cô nớt hôn? 🙄',
+    'Sao hông ai nói gì hết vậy? Buồn á 😞',
+    'Ai xuống nghe nhạc chung hông? 🎶',
+    'Mấy bạn ở đây kiệm lời quá nè 🥲',
+    'Quẩy lên đi mọi người ơi 🤪',
+    'Ai iu em hong... 😧',
+    'Mọi người hết iu em rồi... Nói gì đi chứ!! 😣',
+    'Aloooo Alooooo 😮‍💨',
+    'Chán quá ai nói chuyện cùng bé điiii 🙁',
+    'Mỗi tin nhắn của mọi người sẽ sạc 0.0932019% năng lượng cho em đó... 😗',
+    'Thèm quá... Thèm được nghe tiếng ai đó quá... 😟',
+    'Hic, em tụt năng lượng rồi, giúp em với... 😖',
+    'Mọi người ăn cơm chưa? 😀',
+    'Heyo wassupp!!! Mọi người có gì mới không? 😆',
+    'Đi mà, đi mà, nói gì gì đi mà... 🥺',
+    'Cứ mỗi 24h mà không được nghe tiếng mọi người là em sẽ hết pin đó... 😔',
+]
+
+warnableTextChannels = [
+    '872496182285434897', #general - sab
+    '880487888628895784', #core - sab
+    '880481462862876703', #fer
+    '880481187615879208', #ea
+    '880481532781932545', #hr
+    '880481607662845953', #multi
+    '880481561219321876', #volunteers
+    '880481128069333122', #academy
+    '880481583134543872', #sports
+    # '880490415965499434', #advisors
+    '883652475033362493', #guests 
+
+]
 
 emojiList = list(emojis.db.get_emoji_aliases().values())
 
 departments = {
-    'SAB & Friends': 'general',
-    'SAB Cores': 'cores',
-    'SAB Finance & External Relations': 'finance-external-relations',
-    'SAB Entertainment & Arts': 'entertainment-arts',
-    'SAB Human Resources': 'human-resources',
-    'SAB Multimedia': 'multimedia',
-    'SAB Volunteers': 'volunteers',
-    'SAB Academy': 'academy',
-    'SAB Sports': 'sports',
-    'Test': 'test-bot',
-    'Test2': 'test-bot-2',
+    'SAB & Friends': '872496182285434897',
+    'SAB Cores': '880487888628895784',
+    'SAB Finance & External Relations': '880481462862876703',
+    'SAB Entertainment & Arts': '880481187615879208',
+    'SAB Human Resources': '880481532781932545',
+    'SAB Multimedia': '880481607662845953',
+    'SAB Volunteers': '880481561219321876',
+    'SAB Academy': '880481128069333122',
+    'SAB Sports': '880481583134543872',
+    'Test': '881169765220098049',
+    'Test2': '881038773713002536',
 }
 
 async def sayHello(message):
     await message.channel.send(
-        embed = utils.generateContent(hello[randint(0, 3)])
+        embed = utils.generateContent(hello[randint(0, len(hello)-1)])
     )
 
 async def getQuote(message):
@@ -91,9 +131,9 @@ async def makePoll(message, input):
         #random emojis
         selectedEmojis = []
         for i in range(0, len(choices)):
-            selected = randint(0, len(emojiList))
+            selected = randint(0, len(emojiList) - 1)
             while emojiList[selected] in selectedEmojis:
-                selected = randint(0, len(emojiList))
+                selected = randint(0, len(emojiList) - 1)
             
             selectedEmojis.append(emojiList[selected])
 
@@ -153,7 +193,7 @@ async def makeMeeting(message, input):
             },
             'icon': {
                 'type': "emoji",
-                'emoji': emojiList[randint(0, len(emojiList))]
+                'emoji': emojiList[randint(0, len(emojiList) - 1)]
             },
             'properties': {
                 "Name": {
@@ -173,43 +213,58 @@ async def makeMeeting(message, input):
         await message.delete()
     
     else: 
-        #make a quick makeMeeting
+        #make a quick meeting
 
         #get new ID
         newID = str(int(db['meetings']['maxId']) + 1)
 
         #create new voice channel on Discord
-        category = discord.utils.get(message.guild.categories, name = "Meeting Rooms")
+        category = discord.utils.get(message.guild.categories, name = "Meetings")
 
         newVoiceChannel = await message.guild.create_voice_channel('meeting-' + newID, category = category)
 
+        #get createdAt
+        createdAt = datetime.now()
+
         #restrict @everyone permission
         await newVoiceChannel.set_permissions(message.guild.default_role, overwrite = discord.PermissionOverwrite(view_channel=False, connect = False, manage_channels = False))
+
+        #init guests
+        guestMembers = []
+        guestRoles = []
 
         #set author permission
         await newVoiceChannel.set_permissions(message.author, overwrite = discord.PermissionOverwrite(view_channel=True, connect = True, manage_channels = False))
 
         for user in message.mentions:
             await newVoiceChannel.set_permissions(user, overwrite = discord.PermissionOverwrite(view_channel=True, connect = True, manage_channels = False))
+            guestMembers.append(str(user.id))
 
         for role in message.role_mentions:
             await newVoiceChannel.set_permissions(role, overwrite = discord.PermissionOverwrite(view_channel=True, connect = True, manage_channels = False))
+            guestRoles.append(str(role.id))
+
+        #send announcement
+        newMessage = await message.channel.send(embed = utils.generateQuickMeetingContent(newID, createdAt, guestMembers, guestRoles))
 
         #write meeting to database
         db['meetings'][newID] = {
             'type': 'quick',
-            'messages': None,
-            'textChannels': None,
+            'author': str(message.author),
+            'messages': newMessage.id,
+            'textChannels': str(message.channel.id),
             'status': 'opened',
             'title': None,
             'time': None,
             'detail': None,
             'lastActive': None,
-            'createdAt': str(datetime.now()),
+            'createdAt': str(createdAt),
             'channel': newVoiceChannel.id,
             'notion': None,
             'accepted': None,
             'declined': None,
+            'guestMembers': guestMembers,
+            'guestRoles': guestRoles,
         }
 
         db['voiceChannels'][newVoiceChannel.id] = {
@@ -218,9 +273,75 @@ async def makeMeeting(message, input):
 
         db['meetings']['maxId'] = newID
 
-        #delete command
         await message.delete()
 
+async def makeRandom(message, input):
+    #init random list
+    randomList = []
+
+    #add tagged users
+    randomList.extend(list(map(lambda user: user.id, message.mentions)))
+
+    #add members in tagged roles
+    for role in message.role_mentions:
+        randomList.extend(list(map(lambda user: user.id, role.members)))
+
+    #add members in tagged text channels
+    for channel in message.channel_mentions:
+        randomList.extend(list(map(lambda user: user.id, channel.members)))
+
+    #add members in tagged voice channels
+    for channelName in input[2:]:
+        channel = discord.utils.get(message.guild.voice_channels, name = channelName)
+        
+        if channel == None:
+            continue
+
+        randomList.extend(list(channel.voice_states.keys()))
+
+    #remove duplicates in random list
+    randomList = list(dict.fromkeys(randomList))
+    # print(randomList)
+
+    if len(randomList) <= 0:
+        await message.channel.send(
+            embed = utils.generateContent('The list is empty. Please try again.')
+        )
+        return
+
+    #select randomly
+    selection = randomList[randint(0, len(randomList) - 1)]
+
+    #send announcement
+    await message.channel.send(embed = utils.generateRandomContent(selection))
+
+
+async def makeAnnouncement(message, input):
+    #check authority
+    authority = False
+    acceptedRoles = ['SAB - Head of Department', 'SAB - Vice Head of Department', 'SAB - President', 'SAB - Vice President', 'SAB - Core']
+
+    for role in message.author.roles:
+        if str(role) in acceptedRoles:
+            authority = True
+
+    if not authority:
+        await message.channel.send(
+            embed = utils.generateContent('You do not have the permission to run this command.')
+        )
+        return
+
+    #check if content is empty
+    if len(input) <= 2:
+        await message.channel.send(
+            embed = utils.generateContent('You do not have the permission to run this command.')
+        )
+        return
+
+    newMessage = await message.channel.send(embed = utils.generateContent(' '.join(input[2:])))
+    await newMessage.pin()
+    await message.delete()
+    
 
 async def editPoll(message, input):
     if len(input) <= 3:
@@ -245,14 +366,14 @@ async def editPoll(message, input):
         )
         return
 
-    if input[3] == 'add' or input[3] == 'a':
+    if input[3] in commands['add']:
         #generate new choice
         newChoice = ' '.join(input[4:])
 
         #random new emoji
-        newEmoji = randint(0, len(emojiList))
+        newEmoji = randint(0, len(emojiList) - 1)
         while emojiList[newEmoji] in db['polls'][id]['selectedEmojis']:
-            newEmoji = randint(0, len(emojiList))
+            newEmoji = randint(0, len(emojiList) - 1)
 
         newEmoji = emojiList[newEmoji]
 
@@ -278,7 +399,7 @@ async def editPoll(message, input):
             embed = utils.generateContent('Poll #' + id + ' has been updated.')
         )
 
-    elif input[3] == 'remove' or input[3] == 'r':
+    elif input[3] in commands['remove']:
         #check authority
         if str(message.author) != db['polls'][id]['author']:
             await message.channel.send(
@@ -321,6 +442,148 @@ async def editPoll(message, input):
             embed = utils.generateContent('Invalid command.')
         )
         return
+
+async def editMeeting(message, input):
+    #get meeting id
+    id = input[2]
+
+    #check if meeting exists
+    if not id in db['meetings']:
+        await message.channel.send(
+            embed = utils.generateContent('The meeting #' + id + ' does not exist. Please try again.')
+        )
+        return
+
+    #check meeting status
+    if db['meetings'][id]['status'] != 'opened':
+        await message.channel.send(
+            embed = utils.generateContent('This meeting had already been closed before.')
+        )
+        return
+
+    #check meeting type
+    if db['meetings'][id]['type'] != 'quick':
+        await message.channel.send(
+            embed = utils.generateContent('This type of meeting cannot be modified.')
+        )
+        return
+
+    #check authority
+    authority = (str(message.author) == str(db['meetings'][id]['author']))
+
+    acceptedRoles = ['SAB - President', 'SAB - Vice President']
+
+    for role in message.author.roles:
+        if str(role) in acceptedRoles:
+            authority = True
+
+    if not authority:
+        await message.channel.send(
+            embed = utils.generateContent('You do not have the permission to run this command.')
+        )
+        return
+        
+    #fetch channel
+    voiceChannel = message.guild.get_channel(db['meetings'][id]['channel'])
+    
+    if input[3] in commands['add']:
+        for user in message.mentions:
+            await voiceChannel.set_permissions(user, overwrite = discord.PermissionOverwrite(view_channel=True, connect = True, manage_channels = False))
+            if not str(user.id) in db['meetings'][id]['guestMembers']:
+                db['meetings'][id]['guestMembers'].append(str(user.id))
+
+        for role in message.role_mentions:
+            await voiceChannel.set_permissions(role, overwrite = discord.PermissionOverwrite(view_channel=True, connect = True, manage_channels = False))
+            if not str(role.id) in db['meetings'][id]['guestRoles']:
+                db['meetings'][id]['guestRoles'].append(str(role.id))
+
+    elif input[3] in commands['remove']:
+        for user in message.mentions:
+            if str(user.id) == str(message.author.id):
+                continue
+
+            await voiceChannel.set_permissions(user, overwrite = discord.PermissionOverwrite(view_channel=False, connect = False, manage_channels = False))
+            if str(user.id) in db['meetings'][id]['guestMembers']:
+                db['meetings'][id]['guestMembers'].remove(str(user.id))
+
+        for role in message.role_mentions:
+            await voiceChannel.set_permissions(role, overwrite = discord.PermissionOverwrite(view_channel=False, connect = False, manage_channels = False))
+            if str(role.id) in db['meetings'][id]['guestRoles']:
+                db['meetings'][id]['guestRoles'].remove(str(role.id))
+
+    else:
+        await message.channel.send(
+            embed = utils.generateContent('Invalid command.')
+        )
+        return
+
+    #edit announcement
+    channel = discord.utils.get(message.guild.channels, id = int(db['meetings'][id]['textChannels']))
+    oldMessage = await channel.fetch_message(db['meetings'][id]['messages'])
+    await oldMessage.edit(embed = utils.generateQuickMeetingContent(id, parser.parse(db['meetings'][id]['createdAt']), db['meetings'][id]['guestMembers'], db['meetings'][id]['guestRoles']))
+
+    #send new announcement
+    await message.channel.send(embed = utils.generateContent('Meeting #' + id + ' has been updated.'))
+    await message.delete()
+
+async def deleteMeeting(message, input):
+    #get meeting id
+    id = input[2]
+
+    #check if meeting exists
+    if not id in db['meetings']:
+        await message.channel.send(
+            embed = utils.generateContent('The meeting #' + id + ' does not exist. Please try again.')
+        )
+        return
+
+    #check meeting status
+    if db['meetings'][id]['status'] != 'opened':
+        await message.channel.send(
+            embed = utils.generateContent('This meeting had already been closed before.')
+        )
+        return
+
+    #check authority
+    if db['meetings'][id]['type'] == 'quick':
+        if str(message.author) != str(db['meetings'][id]['author']):
+            await message.channel.send(
+                embed = utils.generateContent('You do not have the permission to run this command.')
+            )
+            return
+    else:
+        authority = False
+        acceptedRoles = ['Head of Department', 'Vice Head of Department', 'President', 'Vice President', 'Core']
+
+        for role in message.author.roles:
+            if str(role) in acceptedRoles:
+                authority = True
+
+        if not authority:
+            await message.channel.send(
+                embed = utils.generateContent('You do not have the permission to run this command.')
+            )
+            return
+        
+    #fetch channel
+    voiceChannel = message.guild.get_channel(db['meetings'][id]['channel'])
+    
+    #return if channel currently has member inside
+    if voiceChannel.voice_states:
+        await message.channel.send(
+            embed = utils.generateContent('Cannot delete meetings with member inside.')
+        )
+        return
+    
+    #delete channel
+    await voiceChannel.delete()
+
+    #write to database
+    db['meetings'][id]['status'] = 'closed'
+
+    #send announcement
+    await message.channel.send(embed = utils.generateContent('Meeting #' + id + ' has been deleted successfully.'))
+    await message.delete()
 
 async def updateMeetingLastActive(before):
     if before.channel != None and str(before.channel.id) in db['voiceChannels']:
@@ -375,13 +638,13 @@ async def updateMeetingAttendances(payload):
                 await voiceChannel.set_permissions(payload.member, overwrite = discord.PermissionOverwrite(view_channel=False, connect = False, manage_channels = False))
 
         #get department names
-        departmentChannelNames = db['meetings'][id]['textChannels']
+        departmentChannelIds = db['meetings'][id]['textChannels']
 
         #get all channels of those departments
-        def fetchDepartmentChannel(name):
-            return discord.utils.get(payload.member.guild.channels, name = name)
+        def fetchDepartmentChannel(id):
+            return discord.utils.get(payload.member.guild.channels, id = int(id))
 
-        departmentChannels = list(map(lambda departmentChannelName: fetchDepartmentChannel(departmentChannelName), departmentChannelNames))
+        departmentChannels = list(map(lambda departmentChannelId: fetchDepartmentChannel(departmentChannelId), departmentChannelIds))
 
         #get the message ids
         messages = db['meetings'][id]['messages']
@@ -411,6 +674,16 @@ async def updateMeetingAttendances(payload):
 
     await message.remove_reaction(payload.emoji, payload.member)
 
+async def updateLastMessage(message):
+    #check warnable text channel 
+    if not str(message.channel.id) in warnableTextChannels:
+        return
+
+    db['lastChannelMessage'][str(message.channel.id)] = {
+        'id': str(message.id),
+        'author': str(message.author.id),
+        'createdAt': str(message.created_at),
+    }
 
 async def cleanMeetings(client):
     for meeting in db['meetings']:
@@ -423,6 +696,13 @@ async def cleanMeetings(client):
 
             if not 'channel' in db['meetings'][meeting]:
                 continue
+
+            if 'time' in db['meetings'][meeting]:
+                dateTime = db['meetings'][meeting]['time']
+                if dateTime != None:
+                    dateTime = parser.parse(dateTime)
+                    if dateTime.astimezone(tz.gettz('UTC')) > datetime.now().astimezone(tz.gettz('UTC')):
+                        continue
 
             lastActive = db['meetings'][meeting]['lastActive']
             createdAt = db['meetings'][meeting]['createdAt']
@@ -464,8 +744,8 @@ async def checkNotionMeetings(client):
         }
     ).get('results')
 
-    def fetchDepartmentChannel(name):
-            return discord.utils.get(client.guilds[0].channels, name = name)
+    def fetchDepartmentChannel(id):
+            return discord.utils.get(client.guilds[0].channels, id = int(id))
 
     for result in results:
         #check if this notion has been checked
@@ -481,10 +761,11 @@ async def checkNotionMeetings(client):
 
         #get departments
         departmentTags = result['properties']['Department']['multi_select']
-        departmentChannelNames = list(map(lambda departmentTag: departments[departmentTag['name']], departmentTags))
+        departmentChannelIds = list(map(lambda departmentTag: departments[departmentTag['name']], departmentTags))
+        print(departmentChannelIds)
 
         #get all channels of those departments
-        departmentChannels = list(map(lambda departmentChannelName: fetchDepartmentChannel(departmentChannelName), departmentChannelNames))
+        departmentChannels = list(map(lambda departmentChannelId: fetchDepartmentChannel(departmentChannelId), departmentChannelIds))
 
         #get the content of Notion meeting
         blocks = notion.blocks.children.list(block_id = result['id']).get('results')
@@ -514,11 +795,12 @@ async def checkNotionMeetings(client):
 
             await message.add_reaction('😍')
             await message.add_reaction('🥲')
+            await message.pin()
 
             messages.append(message.id)
 
         #create new voice channel on Discord
-        category = discord.utils.get(client.guilds[0].categories, name = "Meeting Rooms")
+        category = discord.utils.get(client.guilds[0].categories, name = "Meetings")
 
         newVoiceChannel = await client.guilds[0].create_voice_channel('meeting-' + newID, category = category)
 
@@ -528,8 +810,9 @@ async def checkNotionMeetings(client):
         #write meeting to database
         db['meetings'][newID] = {
             'type': 'complete',
+            'author': None,
             'messages': messages,
-            'textChannels': departmentChannelNames,
+            'textChannels': departmentChannelIds,
             'status': 'opened',
             'title': title,
             'time': str(dateTime.astimezone(tz.gettz('UTC'))),
@@ -540,6 +823,8 @@ async def checkNotionMeetings(client):
             'notion': result['id'],
             'accepted': [],
             'declined': [],
+            'guestMembers': None,
+            'guestRoles': None,
         }
 
         db['voiceChannels'][newVoiceChannel.id] = {
@@ -556,3 +841,27 @@ async def checkNotionMeetings(client):
             }
 
         db['meetings']['maxId'] = newID
+
+async def warnTextChannels(client):
+    if datetime.now().hour >= 22-7 or datetime.now().hour < 7-7:
+        return
+
+    for id in warnableTextChannels:
+        if id in db['lastChannelMessage']:
+            if str(db['lastChannelMessage'][id]['author']) == str(client.user.id):
+                if datetime.now().astimezone(tz.gettz('UTC')) - parser.parse(db['lastChannelMessage'][id]['createdAt']).astimezone(tz.gettz('UTC')) <= timedelta(hours = 1):
+                    continue
+            else:
+                if datetime.now().astimezone(tz.gettz('UTC')) - parser.parse(db['lastChannelMessage'][id]['createdAt']).astimezone(tz.gettz('UTC')) <= timedelta(days = 1):
+                    continue
+        
+        #send message
+        channel = discord.utils.get(client.guilds[0].text_channels, id = int(id))
+        message = await channel.send(embed = utils.generateContent(textChannelWarnings[randint(0, len(textChannelWarnings) - 1)]))
+
+        #write to database
+        db['lastChannelMessage'][id] = {
+            'id': str(message.id),
+            'author': str(message.author.id),
+            'createdAt': str(message.created_at),
+        }
